@@ -7,7 +7,7 @@ on:
 jobs:
   integration:
     name: Integration Check
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
     steps:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.4.1
