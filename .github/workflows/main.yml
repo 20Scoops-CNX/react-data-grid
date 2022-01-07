@@ -25,7 +25,7 @@ jobs:
         uses: mathieudutour/github-tag-action@v6.0
         with:
           github_token: ${{ secrets.DEPLOYER_TOKEN }}
-          release_branches: main
+          release_branches: chore/test-deploy
       - name: slack - GitHub Actions Slack integration
         uses: act10ns/slack@v1.0.9
         with:
