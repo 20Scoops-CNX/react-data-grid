@@ -1,18 +1,18 @@
 name: CI
 on:
   push:
-    branches:
-      - develop
-    paths-ignore:
-      - '**.md'
-  pull_request:
-    paths-ignore:
-      - '**.md'
+    branches-ignore:
+      - main
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  integration:
+    name: Integration Check
+    runs-on: [self-hosted, linux]
     steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.4.1
+        with:
+          access_token: ${{ github.token }}
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
@@ -30,7 +30,10 @@ jobs:
         run: npm run prettier:check
       - name: Typecheck
         run: npm run typecheck
-      - name: Bundle
-        run: |
-          npm run build
-          npm run build:types
+      - name: slack - GitHub Actions Slack integration
+        uses: act10ns/slack@v1.0.9
+        with:
+          status: ${{ job.status }}
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
