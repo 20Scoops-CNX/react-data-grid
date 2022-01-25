@@ -413,6 +413,26 @@ function DataGrid<R, SR, K extends Key>(
   //   scrollToCell(selectedPosition);
   // });
 
+  const getIsAcrossSelection = () => {
+    let isAcrossRow = false;
+    let isAcrossColumn = false;
+
+    for (let i = 1; i < selectedPosition.length; i++) {
+      const current = selectedPosition[i];
+      const prev = selectedPosition[i - 1];
+
+      if (prev.rowIdx !== current.rowIdx) {
+        isAcrossRow = true;
+      }
+
+      if (prev.idx !== current.idx) {
+        isAcrossColumn = true;
+      }
+    }
+
+    return isAcrossRow && isAcrossColumn;
+  };
+
   const exportSelectCell = (position: Position, enableEditor?: Maybe<boolean>) => {
     selectCell(position, { isShiftKey: false, isCommandKey: false }, enableEditor);
   };
@@ -537,8 +557,6 @@ function DataGrid<R, SR, K extends Key>(
 
     const selectedPositionItem = selectedPosition[0]; // TODO Recheck
 
-    console.log('selectedPositionItem', selectedPositionItem);
-
     if (
       selectedCellIsWithinViewportBounds &&
       onPaste != null &&
@@ -653,32 +671,10 @@ function DataGrid<R, SR, K extends Key>(
       ]);
     }
 
-    let isAcrossRow = false;
-    let isAcrossColumn = false;
-    for (let i = 1; i < selectedPosition.length; i++) {
-      const current = selectedPosition[i];
-      const prev = selectedPosition[i - 1];
+    if (getIsAcrossSelection()) {
+      const { maxRowIdx, maxColIdx } = getMaxRowAndColIdSelection();
 
-      if (prev.rowIdx !== current.rowIdx) {
-        isAcrossRow = true;
-      }
-
-      if (prev.idx !== current.idx) {
-        isAcrossColumn = true;
-      }
-    }
-
-    const isAcrossRowAndColumn = isAcrossRow && isAcrossColumn;
-
-    if (isAcrossRowAndColumn) {
-      const maxRowIdx = maxBy(selectedPosition as SelectCellState[], (position) => position.rowIdx)
-        ?.rowIdx!;
-      const selectedPositionMaxRow = (selectedPosition as SelectCellState[]).filter(
-        (selected) => selected.rowIdx === maxRowIdx
-      );
-      const maxColIdx = maxBy(selectedPositionMaxRow, (position) => position.idx)?.idx!;
-
-      const copiedCell = selectedPositionMaxRow.find(
+      const copiedCell = (selectedPosition as SelectCellState[]).find(
         (selected) => selected.idx === maxColIdx && selected.rowIdx === maxRowIdx
       );
 
@@ -1088,15 +1084,55 @@ function DataGrid<R, SR, K extends Key>(
     return isColumnDraggedOver && rowIdx === currentRowIdx;
   }
 
-  function getDragHandle(rowIdx: number) {
+  const getMaxRowAndColIdSelection = () => {
+    const maxRowIdx = maxBy(selectedPosition as SelectCellState[], (position) => position.rowIdx)
+      ?.rowIdx!;
+
+    const selectedPositionMaxRow = (selectedPosition as SelectCellState[]).filter(
+      (selected) => selected.rowIdx === maxRowIdx
+    );
+    const maxColIdx = maxBy(selectedPositionMaxRow, (position) => position.idx)?.idx!;
+
+    return {
+      maxRowIdx,
+      maxColIdx
+    };
+  };
+
+  const getIsShowDragWhenSelect = (rowIdx: number, idx: number) => {
+    if (selectedPosition.length === 1) {
+      return selectedPosition[0].rowIdx === rowIdx && selectedPosition[0].idx === idx;
+    }
+
+    if (getIsAcrossSelection()) {
+      return selectedPosition[0].rowIdx === rowIdx && selectedPosition[0].idx === idx;
+    }
+    const { maxRowIdx, maxColIdx } = getMaxRowAndColIdSelection();
+
+    if (maxRowIdx === rowIdx && maxColIdx === idx) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const onDragEnd = () => {
+    setSelectedPosition((selectedPosition) => {
+      return [(selectedPosition as SelectCellState[])[0]];
+    });
+  };
+
+  function getDragHandle(rowIdx: number, idx: number) {
     const selectedPositionItem = selectedPosition[0];
     if (
-      selectedPosition.length > 1 ||
-      selectedPositionItem.rowIdx !== rowIdx ||
       selectedPositionItem.mode === 'EDIT' ||
       hasGroups || // drag fill is not supported when grouping is enabled
       onFill == null
     ) {
+      return;
+    }
+
+    if (!getIsShowDragWhenSelect(rowIdx, idx)) {
       return;
     }
 
@@ -1111,6 +1147,7 @@ function DataGrid<R, SR, K extends Key>(
         onFill={onFill}
         setDragging={setDragging}
         setDraggedOver={setDraggedOver}
+        onDragEnd={onDragEnd}
       />
     );
   }
@@ -1295,7 +1332,7 @@ function DataGrid<R, SR, K extends Key>(
           lastFrozenColumnIndex={lastFrozenColumnIndex}
           onRowChange={handleFormatterRowChangeLatest}
           selectCell={selectViewportCellLatest}
-          selectedCellDragHandle={getDragHandle(rowIdx)}
+          getDragHandle={getDragHandle}
           selectedCellEditor={getCellEditor(rowIdx)}
         />
       );

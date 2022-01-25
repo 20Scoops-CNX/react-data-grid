@@ -19,7 +19,6 @@ function Row<R, SR>(
     row,
     viewportColumns,
     selectedCellEditor,
-    selectedCellDragHandle,
     onRowClick,
     onRowDoubleClick,
     rowClass,
@@ -30,6 +29,7 @@ function Row<R, SR>(
     onRowChange,
     selectCell,
     getDraggedOverCellIdx,
+    getDragHandle,
     ...props
   }: RowRendererProps<R, SR>,
   ref: React.Ref<HTMLDivElement>
@@ -83,7 +83,7 @@ function Row<R, SR>(
           isCopied={copiedCellIdx?.includes(idx) ?? false}
           isDraggedOver={getDraggedOverCellIdx(rowIdx, idx)}
           isCellSelected={isCellSelected}
-          dragHandle={isCellSelected ? selectedCellDragHandle : undefined}
+          dragHandle={getDragHandle(rowIdx, idx)}
           onRowClick={onRowClick}
           onRowDoubleClick={onRowDoubleClick}
           onRowChange={handleRowChange}

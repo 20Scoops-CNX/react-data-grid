@@ -30,6 +30,7 @@ interface Props<R, SR> extends Pick<DataGridProps<R, SR>, 'rows' | 'onRowsChange
   onFill: (event: FillEvent<R>) => R;
   setDragging: (isDragging: boolean) => void;
   setDraggedOver: (draggedOver?: { rowIdx: number; idx: number }) => void;
+  onDragEnd: () => void;
 }
 
 export default function DragHandle<R, SR>({
@@ -41,7 +42,8 @@ export default function DragHandle<R, SR>({
   onRowsChange,
   onFill,
   setDragging,
-  setDraggedOver
+  setDraggedOver,
+  onDragEnd
 }: Props<R, SR>) {
   function handleMouseDown(event: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     if (event.buttons !== 1) return;
@@ -101,6 +103,7 @@ export default function DragHandle<R, SR>({
 
     updateRows(startRowIndex, endRowIndex, startColIndex, endColIndex);
     setDraggedOver(undefined);
+    onDragEnd();
   }
 
   function handleDoubleClick(event: React.MouseEvent<HTMLDivElement>) {

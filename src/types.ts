@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 
 export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
 
@@ -138,12 +138,15 @@ export interface RowRendererProps<TRow, TSummaryRow = unknown>
   top: number;
   height: number;
   selectedCellEditor: ReactElement<EditorProps<TRow>> | undefined;
-  selectedCellDragHandle: ReactElement<React.HTMLAttributes<HTMLDivElement>> | undefined;
   onRowChange: (rowIdx: number, newRow: TRow) => void;
   onRowClick: Maybe<(row: TRow, column: CalculatedColumn<TRow, TSummaryRow>) => void>;
   onRowDoubleClick: Maybe<(row: TRow, column: CalculatedColumn<TRow, TSummaryRow>) => void>;
   rowClass: Maybe<(row: TRow) => Maybe<string>>;
   setDraggedOver?: (draggedOver?: { rowIdx: number; idx: number }) => void;
+  getDragHandle: (
+    rowIdx: number,
+    idx: number
+  ) => ReactElement<React.HTMLAttributes<HTMLDivElement>> | undefined;
   selectCell: (
     row: TRow,
     column: CalculatedColumn<TRow, TSummaryRow>,
