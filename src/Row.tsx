@@ -15,35 +15,41 @@ function Row<R, SR>(
     selectedCellIdx,
     isRowSelected,
     copiedCellIdx,
-    draggedOverCellIdx,
     lastFrozenColumnIndex,
     row,
     viewportColumns,
     selectedCellEditor,
-    selectedCellDragHandle,
     onRowClick,
     onRowDoubleClick,
     rowClass,
-    setDraggedOverRowIdx,
+    setDraggedOver,
     onMouseEnter,
     top,
     height,
     onRowChange,
     selectCell,
+    getDraggedOverCellIdx,
+    getDragHandle,
     ...props
   }: RowRendererProps<R, SR>,
   ref: React.Ref<HTMLDivElement>
 ) {
-  const { ref: rowRef, tabIndex, className: rovingClassName } = useRovingRowRef(selectedCellIdx);
+  const {
+    ref: rowRef,
+    tabIndex,
+    className: rovingClassName
+  } = useRovingRowRef(selectedCellIdx?.[0]);
 
   const handleRowChange = useLatestFunc((newRow: R) => {
     onRowChange(rowIdx, newRow);
   });
 
-  function handleDragEnter(event: React.MouseEvent<HTMLDivElement>) {
-    setDraggedOverRowIdx?.(rowIdx);
-    onMouseEnter?.(event);
-  }
+  const handleCellDragEnter = (idx: number) => {
+    setDraggedOver?.({
+      rowIdx,
+      idx
+    });
+  };
 
   className = clsx(
     rowClassname,
@@ -63,7 +69,7 @@ function Row<R, SR>(
       index += colSpan - 1;
     }
 
-    const isCellSelected = selectedCellIdx === idx;
+    const isCellSelected = selectedCellIdx?.includes(idx) ?? false;
 
     if (isCellSelected && selectedCellEditor) {
       cells.push(selectedCellEditor);
@@ -74,14 +80,17 @@ function Row<R, SR>(
           column={column}
           colSpan={colSpan}
           row={row}
-          isCopied={copiedCellIdx === idx}
-          isDraggedOver={draggedOverCellIdx === idx}
+          isCopied={copiedCellIdx?.includes(idx) ?? false}
+          isDraggedOver={getDraggedOverCellIdx(rowIdx, idx)}
           isCellSelected={isCellSelected}
-          dragHandle={isCellSelected ? selectedCellDragHandle : undefined}
+          dragHandle={getDragHandle(rowIdx, idx)}
           onRowClick={onRowClick}
           onRowDoubleClick={onRowDoubleClick}
           onRowChange={handleRowChange}
           selectCell={selectCell}
+          onMouseEnter={() => {
+            handleCellDragEnter(idx);
+          }}
         />
       );
     }
@@ -94,7 +103,6 @@ function Row<R, SR>(
         ref={useCombinedRefs(ref, rowRef)}
         tabIndex={tabIndex}
         className={className}
-        onMouseEnter={handleDragEnter}
         style={
           {
             top,

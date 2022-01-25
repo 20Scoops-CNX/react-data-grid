@@ -583,7 +583,7 @@ const rules = {
   '@typescript-eslint/non-nullable-type-assertion-style': 1,
   '@typescript-eslint/prefer-as-const': 1,
   '@typescript-eslint/prefer-enum-initializers': 0,
-  '@typescript-eslint/prefer-for-of': 1,
+  '@typescript-eslint/prefer-for-of': 0,
   '@typescript-eslint/prefer-function-type': 1,
   '@typescript-eslint/prefer-includes': 1,
   '@typescript-eslint/prefer-literal-enum-member': 1,
@@ -669,6 +669,7 @@ const rules = {
     { anonymous: 'never', named: 'never', asyncArrow: 'always' }
   ],
   '@typescript-eslint/space-infix-ops': 1,
+
   ...ignoreRules
 };
 

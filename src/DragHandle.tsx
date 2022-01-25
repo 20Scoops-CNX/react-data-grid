@@ -25,23 +25,25 @@ const cellDragHandleClassname = `rdg-cell-drag-handle ${cellDragHandle}`;
 interface Props<R, SR> extends Pick<DataGridProps<R, SR>, 'rows' | 'onRowsChange'> {
   columns: readonly CalculatedColumn<R, SR>[];
   selectedPosition: SelectCellState;
-  latestDraggedOverRowIdx: React.MutableRefObject<number | undefined>;
+  latestDraggedOver: React.MutableRefObject<{ rowIdx: number; idx: number } | undefined>;
   isCellEditable: (position: Position) => boolean;
   onFill: (event: FillEvent<R>) => R;
   setDragging: (isDragging: boolean) => void;
-  setDraggedOverRowIdx: (overRowIdx: number | undefined) => void;
+  setDraggedOver: (draggedOver?: { rowIdx: number; idx: number }) => void;
+  onDragEnd: () => void;
 }
 
 export default function DragHandle<R, SR>({
   rows,
   columns,
   selectedPosition,
-  latestDraggedOverRowIdx,
+  latestDraggedOver,
   isCellEditable,
   onRowsChange,
   onFill,
   setDragging,
-  setDraggedOverRowIdx
+  setDraggedOver,
+  onDragEnd
 }: Props<R, SR>) {
   function handleMouseDown(event: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     if (event.buttons !== 1) return;
@@ -65,49 +67,96 @@ export default function DragHandle<R, SR>({
   }
 
   function handleDragEnd() {
-    const overRowIdx = latestDraggedOverRowIdx.current;
-    if (overRowIdx === undefined) return;
+    const draggedOver = latestDraggedOver.current;
+    if (draggedOver === undefined) return;
 
-    const { rowIdx } = selectedPosition;
-    const startRowIndex = rowIdx < overRowIdx ? rowIdx + 1 : overRowIdx;
-    const endRowIndex = rowIdx < overRowIdx ? overRowIdx + 1 : rowIdx;
-    updateRows(startRowIndex, endRowIndex);
-    setDraggedOverRowIdx(undefined);
+    const { rowIdx, idx } = selectedPosition;
+
+    const hasRowDraggedOver = rowIdx !== draggedOver.rowIdx;
+
+    const { startRowIndex, endRowIndex } = (() => {
+      if (!hasRowDraggedOver) {
+        return {
+          startRowIndex: rowIdx,
+          endRowIndex: rowIdx
+        };
+      }
+
+      return {
+        startRowIndex: rowIdx < draggedOver.rowIdx ? rowIdx : draggedOver.rowIdx,
+        endRowIndex: rowIdx < draggedOver.rowIdx ? draggedOver.rowIdx : rowIdx
+      };
+    })();
+
+    const { startColIndex, endColIndex } = (() => {
+      if (hasRowDraggedOver) {
+        return {
+          startColIndex: idx,
+          endColIndex: idx
+        };
+      }
+      return {
+        startColIndex: idx < draggedOver.idx ? idx : draggedOver.idx,
+        endColIndex: idx < draggedOver.idx ? draggedOver.idx : idx
+      };
+    })();
+
+    updateRows(startRowIndex, endRowIndex, startColIndex, endColIndex);
+    setDraggedOver(undefined);
+    onDragEnd();
   }
 
   function handleDoubleClick(event: React.MouseEvent<HTMLDivElement>) {
     event.stopPropagation();
-    updateRows(selectedPosition.rowIdx + 1, rows.length);
+    updateRows(
+      selectedPosition.rowIdx + 1,
+      rows.length,
+      selectedPosition.idx,
+      selectedPosition.idx
+    );
   }
 
-  function updateRows(startRowIdx: number, endRowIdx: number) {
-    const { idx, rowIdx } = selectedPosition;
-    const column = columns[idx];
+  function updateRows(
+    startRowIdx: number,
+    endRowIdx: number,
+    startColIndex: number,
+    endColIndex: number
+  ) {
+    const { rowIdx, idx } = selectedPosition;
     const sourceRow = rows[rowIdx];
     const updatedRows = [...rows];
-    const indexes: number[] = [];
-    for (let i = startRowIdx; i < endRowIdx; i++) {
-      if (isCellEditable({ rowIdx: i, idx })) {
-        const updatedRow = onFill({
-          columnKey: column.key,
-          sourceRow,
-          targetRow: rows[i],
-          targetRowIndex: i
-        });
-        if (updatedRow !== rows[i]) {
-          updatedRows[i] = updatedRow;
-          indexes.push(i);
+
+    console.log('onFill', {
+      startRowIdx,
+      endRowIdx,
+      startColIndex,
+      endColIndex
+    });
+
+    for (let i = startRowIdx; i <= endRowIdx; i++) {
+      let updatedRow = { ...rows[i] };
+      for (let j = startColIndex; j <= endColIndex; j++) {
+        const isSourceCell = i === rowIdx && j === idx;
+        if (isCellEditable({ rowIdx: i, idx: j }) && !isSourceCell) {
+          const targetColumn = columns[j];
+          updatedRow = onFill({
+            sourceColumnKey: columns[idx].key,
+            sourceRow,
+            targetColumnKey: targetColumn.key,
+            targetRow: updatedRow,
+            targetRowIndex: i
+          });
         }
       }
+      updatedRows[i] = updatedRow;
     }
 
-    if (indexes.length > 0) {
-      onRowsChange?.(updatedRows, { indexes, column });
-    }
+    onRowsChange?.(updatedRows);
   }
 
   return (
     <div
+      id="drag-handle-here"
       className={cellDragHandleClassname}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
