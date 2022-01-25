@@ -55,7 +55,7 @@ import type {
   Maybe
 } from './types';
 import SimpleBar from 'simplebar-react';
-import { groupBy as groupArrBy, toArray } from 'lodash';
+import { groupBy as groupArrBy, maxBy, sortBy, toArray } from 'lodash';
 
 export interface SelectCellState extends Position {
   readonly mode: 'SELECT';
@@ -259,13 +259,19 @@ function DataGrid<R, SR, K extends Key>(
     { row: R; columnKey: string; rowIdx: number }[] | null
   >(null);
   const [isDragging, setDragging] = useState(false);
-  const [draggedOverRowIdx, setOverRowIdx] = useState<number | undefined>(undefined);
+  const [draggedOver, setOverIdx] = useState<
+    | {
+        idx: number;
+        rowIdx: number;
+      }
+    | undefined
+  >(undefined);
 
   /**
    * refs
    */
   const prevSelectedPosition = useRef(selectedPosition);
-  const latestDraggedOverRowIdx = useRef(draggedOverRowIdx);
+  const latestDraggedOver = useRef(draggedOver);
   const lastSelectedRowIdx = useRef(-1);
 
   /**
@@ -367,21 +373,26 @@ function DataGrid<R, SR, K extends Key>(
   const selectAllRowsLatest = useLatestFunc(selectAllRows);
   const handleFormatterRowChangeLatest = useLatestFunc(updateRow);
   const selectViewportCellLatest = useLatestFunc(
-    (row: R, column: CalculatedColumn<R, SR>, isShiftKey, enableEditor: Maybe<boolean>) => {
+    (
+      row: R,
+      column: CalculatedColumn<R, SR>,
+      { isShiftKey, isCommandKey },
+      enableEditor: Maybe<boolean>
+    ) => {
       const rowIdx = rows.indexOf(row);
-      selectCell({ rowIdx, idx: column.idx }, isShiftKey, enableEditor);
+      selectCell({ rowIdx, idx: column.idx }, { isShiftKey, isCommandKey }, enableEditor);
     }
   );
   const selectGroupLatest = useLatestFunc((rowIdx: number) => {
-    selectCell({ rowIdx, idx: -1 }, false);
+    selectCell({ rowIdx, idx: -1 }, { isShiftKey: false, isCommandKey: false });
   });
   const selectHeaderCellLatest = useLatestFunc((idx: number) => {
-    selectCell({ rowIdx: -1, idx }, false);
+    selectCell({ rowIdx: -1, idx }, { isShiftKey: false, isCommandKey: false });
   });
   const selectSummaryCellLatest = useLatestFunc(
     (summaryRow: SR, column: CalculatedColumn<R, SR>) => {
       const rowIdx = summaryRows!.indexOf(summaryRow) + headerRowsCount + rows.length - 1;
-      selectCell({ rowIdx, idx: column.idx }, false);
+      selectCell({ rowIdx, idx: column.idx }, { isShiftKey: false, isCommandKey: false });
     }
   );
   const toggleGroupLatest = useLatestFunc(toggleGroup);
@@ -391,7 +402,7 @@ function DataGrid<R, SR, K extends Key>(
    */
   // useLayoutEffect(() => { // TODO Change here
   //   if (
-  //     !selectedCellIsWithinSelectionBounds ||
+  // !selectedCellIsWithinSelectionBounds ||
   //     isSamePosition(selectedPosition, prevSelectedPosition.current)
   //   ) {
   //     prevSelectedPosition.current = selectedPosition;
@@ -401,6 +412,10 @@ function DataGrid<R, SR, K extends Key>(
   //   prevSelectedPosition.current = selectedPosition;
   //   scrollToCell(selectedPosition);
   // });
+
+  const exportSelectCell = (position: Position, enableEditor?: Maybe<boolean>) => {
+    selectCell(position, { isShiftKey: false, isCommandKey: false }, enableEditor);
+  };
 
   useImperativeHandle(ref, () => ({
     element: gridRef.current,
@@ -415,7 +430,7 @@ function DataGrid<R, SR, K extends Key>(
         behavior: 'smooth'
       });
     },
-    selectCell
+    selectCell: exportSelectCell
   }));
 
   /**
@@ -434,9 +449,9 @@ function DataGrid<R, SR, K extends Key>(
     [onColumnResize]
   );
 
-  const setDraggedOverRowIdx = useCallback((rowIdx?: number) => {
-    setOverRowIdx(rowIdx);
-    latestDraggedOverRowIdx.current = rowIdx;
+  const setDraggedOver = useCallback((draggedOver?: { rowIdx: number; idx: number }) => {
+    setOverIdx(draggedOver);
+    latestDraggedOver.current = draggedOver;
   }, []);
 
   /**
@@ -521,6 +536,8 @@ function DataGrid<R, SR, K extends Key>(
     const { rowIdx } = selectedPosition[0]; // TODO Recheck
 
     const selectedPositionItem = selectedPosition[0]; // TODO Recheck
+
+    console.log('selectedPositionItem', selectedPositionItem);
 
     if (
       selectedCellIsWithinViewportBounds &&
@@ -626,10 +643,61 @@ function DataGrid<R, SR, K extends Key>(
   }
 
   function handleCopy() {
-    const copiedCells = selectedPosition.map(({ rowIdx, idx }) => {
-      return { row: rawRows[getRawRowIdx(rowIdx)], columnKey: columns[idx].key, rowIdx };
-    });
-    setCopiedCell(copiedCells);
+    if (selectedPosition.length === 1) {
+      setCopiedCell([
+        {
+          row: rawRows[getRawRowIdx(selectedPositionItem.rowIdx)],
+          columnKey: columns[selectedPositionItem.idx].key,
+          rowIdx: selectedPositionItem.rowIdx
+        }
+      ]);
+    }
+
+    let isAcrossRow = false;
+    let isAcrossColumn = false;
+    for (let i = 1; i < selectedPosition.length; i++) {
+      const current = selectedPosition[i];
+      const prev = selectedPosition[i - 1];
+
+      if (prev.rowIdx !== current.rowIdx) {
+        isAcrossRow = true;
+      }
+
+      if (prev.idx !== current.idx) {
+        isAcrossColumn = true;
+      }
+    }
+
+    const isAcrossRowAndColumn = isAcrossRow && isAcrossColumn;
+
+    if (isAcrossRowAndColumn) {
+      const maxRowIdx = maxBy(selectedPosition as SelectCellState[], (position) => position.rowIdx)
+        ?.rowIdx!;
+      const selectedPositionMaxRow = (selectedPosition as SelectCellState[]).filter(
+        (selected) => selected.rowIdx === maxRowIdx
+      );
+      const maxColIdx = maxBy(selectedPositionMaxRow, (position) => position.idx)?.idx!;
+
+      const copiedCell = selectedPositionMaxRow.find(
+        (selected) => selected.idx === maxColIdx && selected.rowIdx === maxRowIdx
+      );
+
+      if (copiedCell) {
+        setCopiedCell([
+          {
+            row: rawRows[getRawRowIdx(copiedCell.rowIdx)],
+            rowIdx: copiedCell.rowIdx,
+            columnKey: columns[copiedCell.idx].key
+          }
+        ]);
+      }
+    } else {
+      setCopiedCell(
+        selectedPosition.map(({ rowIdx, idx }) => {
+          return { row: rawRows[getRawRowIdx(rowIdx)], columnKey: columns[idx].key, rowIdx };
+        })
+      );
+    }
   }
 
   function handlePaste() {
@@ -656,7 +724,9 @@ function DataGrid<R, SR, K extends Key>(
 
       let updatedTargetRow = { ...targetRow };
 
-      copiedRowGroup.forEach((copiedCell, copiedColumnIndex) => {
+      sortBy(copiedRowGroup, (copiedRowGroupItem) =>
+        columns.findIndex((col) => col.key === copiedRowGroupItem.columnKey)
+      ).forEach((copiedCell, copiedColumnIndex) => {
         const targetIdx = idx + copiedColumnIndex;
 
         if (!columns[targetIdx].key) {
@@ -703,14 +773,15 @@ function DataGrid<R, SR, K extends Key>(
 
     if (isCellHasEditor(selectedPositionItem) && isDefaultCellInput(event)) {
       setSelectedPosition((selectedItems) => {
-        selectedItems[0] = {
-          idx: selectedItems[0].idx,
-          rowIdx: selectedItems[0].rowIdx,
-          mode: 'EDIT',
-          row,
-          originalRow: row
-        };
-        return [...selectedItems] as EditCellState<R>[];
+        return [
+          {
+            idx: selectedItems[0].idx,
+            rowIdx: selectedItems[0].rowIdx,
+            mode: 'EDIT',
+            row,
+            originalRow: row
+          }
+        ] as EditCellState<R>[];
       });
     }
   }
@@ -770,9 +841,15 @@ function DataGrid<R, SR, K extends Key>(
     setSelectedPosition(allPositions);
   }
 
+  function handleSelectRowByCommand(position: Position) {
+    const prevSelectedPosition = selectedPosition as SelectCellState[];
+
+    setSelectedPosition([{ ...position, mode: 'SELECT' }, ...prevSelectedPosition]);
+  }
+
   function selectCell(
     position: Position,
-    isShiftKey: boolean,
+    keyboard: { isShiftKey: boolean; isCommandKey: boolean },
     enableEditor?: Maybe<boolean>
   ): void {
     if (!isCellWithinSelectionBounds(position)) return;
@@ -786,8 +863,10 @@ function DataGrid<R, SR, K extends Key>(
       // Avoid re-renders if the selected cell state is the same
       // TODO: replace with a #record? https://github.com/microsoft/TypeScript/issues/39831
       scrollToCell(position);
-    } else if (isShiftKey) {
+    } else if (keyboard.isShiftKey) {
       handleSelectRowByShift(position);
+    } else if (keyboard.isCommandKey) {
+      handleSelectRowByCommand(position);
     } else {
       setSelectedPosition([{ ...position, mode: 'SELECT' }]);
     }
@@ -870,6 +949,7 @@ function DataGrid<R, SR, K extends Key>(
       }
     }
 
+    console.log('key', key);
     switch (key) {
       case 'ArrowUp': {
         const rawPrevRow = rowIdx - 1;
@@ -977,20 +1057,35 @@ function DataGrid<R, SR, K extends Key>(
       hideRows
     });
 
-    selectCell(nextSelectedCellPosition, false);
+    selectCell(nextSelectedCellPosition, {
+      isShiftKey: false,
+      isCommandKey: false
+    });
   }
 
-  function getDraggedOverCellIdx(currentRowIdx: number): number | undefined {
-    if (draggedOverRowIdx === undefined) return;
+  function getDraggedOverCellIdx(currentRowIdx: number, currentColIdx: number): boolean {
+    if (draggedOver === undefined) return false;
     const selectedPositionItem = selectedPosition[0]; // TODO change
-    const { rowIdx } = selectedPositionItem;
+    const { rowIdx, idx } = selectedPositionItem;
 
-    const isDraggedOver =
-      rowIdx < draggedOverRowIdx
-        ? rowIdx < currentRowIdx && currentRowIdx <= draggedOverRowIdx
-        : rowIdx > currentRowIdx && currentRowIdx >= draggedOverRowIdx;
+    if (currentRowIdx === rowIdx && idx === currentColIdx) {
+      return false;
+    }
 
-    return isDraggedOver ? selectedPositionItem.idx : undefined;
+    const isRowDraggedOver =
+      rowIdx < draggedOver.rowIdx
+        ? rowIdx < currentRowIdx && currentRowIdx <= draggedOver.rowIdx
+        : rowIdx > currentRowIdx && currentRowIdx >= draggedOver.rowIdx;
+
+    const isColumnDraggedOver =
+      idx < draggedOver.idx
+        ? idx < currentColIdx && currentColIdx <= draggedOver.idx
+        : idx > currentColIdx && currentColIdx >= draggedOver.idx;
+
+    if (rowIdx !== draggedOver.rowIdx) {
+      return isRowDraggedOver && idx === currentColIdx;
+    }
+    return isColumnDraggedOver && rowIdx === currentRowIdx;
   }
 
   function getDragHandle(rowIdx: number) {
@@ -1011,11 +1106,11 @@ function DataGrid<R, SR, K extends Key>(
         columns={columns}
         selectedPosition={selectedPositionItem} // TODO accept multiple
         isCellEditable={isCellEditable}
-        latestDraggedOverRowIdx={latestDraggedOverRowIdx}
+        latestDraggedOver={latestDraggedOver}
         onRowsChange={onRowsChange}
         onFill={onFill}
         setDragging={setDragging}
-        setDraggedOverRowIdx={setDraggedOverRowIdx}
+        setDraggedOver={setDraggedOver}
       />
     );
   }
@@ -1071,7 +1166,6 @@ function DataGrid<R, SR, K extends Key>(
     let startRowIndex = 0;
 
     const selectedPositionItem = selectedPosition[0];
-    console.log('selectedPosition=>', selectedPosition);
     const allSelectedRowIds = selectedPosition.map((selectedPosition) => selectedPosition.rowIdx);
     const { idx: selectedIdx, rowIdx: selectedRowIdx } = selectedPositionItem;
     const startRowIdx =
@@ -1156,6 +1250,30 @@ function DataGrid<R, SR, K extends Key>(
         key = hasGroups ? startRowIndex : rowIdx;
       }
 
+      const selectedCellIdx = allSelectedRowIds.includes(rowIdx)
+        ? selectedPosition
+            .map((selected) => {
+              return {
+                idx: selected.idx,
+                rowIdx: selected.rowIdx
+              };
+            })
+            .filter((selected) => selected.rowIdx === rowIdx)
+            .map((selected) => selected.idx)
+        : undefined;
+
+      const copiedCellIdx = (() => {
+        if (copiedCell === null) {
+          return undefined;
+        }
+
+        return copiedCell
+          .filter((cell) => cell.rowIdx === rowIdx)
+          .map((cell) => {
+            return columns.findIndex((column) => column.key === cell.columnKey);
+          });
+      })();
+
       rowElements.push(
         <RowRenderer
           aria-rowindex={headerRowsCount + (hasGroups ? startRowIndex : rowIdx) + 1} // aria-rowindex is 1 based
@@ -1170,18 +1288,10 @@ function DataGrid<R, SR, K extends Key>(
           rowClass={rowClass}
           top={top}
           height={getRowHeight(rowIdx)}
-          copiedCellIdx={
-            copiedCell !== null && copiedCell.row === row
-              ? columns.findIndex((c) => c.key === copiedCell.columnKey)
-              : undefined
-          }
-          selectedCellIdx={
-            allSelectedRowIds.includes(rowIdx)
-              ? selectedPosition.map((selected) => selected.idx)
-              : undefined
-          }
-          draggedOverCellIdx={getDraggedOverCellIdx(rowIdx)}
-          setDraggedOverRowIdx={isDragging ? setDraggedOverRowIdx : undefined}
+          copiedCellIdx={copiedCellIdx}
+          selectedCellIdx={selectedCellIdx}
+          getDraggedOverCellIdx={getDraggedOverCellIdx}
+          setDraggedOver={isDragging ? setDraggedOver : undefined}
           lastFrozenColumnIndex={lastFrozenColumnIndex}
           onRowChange={handleFormatterRowChangeLatest}
           selectCell={selectViewportCellLatest}
@@ -1194,14 +1304,12 @@ function DataGrid<R, SR, K extends Key>(
     return rowElements;
   }
 
-  console.log('selectedPosition', selectedPosition);
-
   const selectedPositionItem = selectedPosition[0]; // TODO change here
 
   // Reset the positions if the current values are no longer valid. This can happen if a column or row is removed
   if (selectedPositionItem.idx > maxColIdx || selectedPositionItem.rowIdx > maxRowIdx) {
     setSelectedPosition([initialPosition]);
-    setDraggedOverRowIdx(undefined);
+    setDraggedOver(undefined);
   }
 
   return (

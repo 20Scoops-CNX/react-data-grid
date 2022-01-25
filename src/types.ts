@@ -122,16 +122,17 @@ export interface CellRendererProps<TRow, TSummaryRow>
   isCellSelected: boolean;
   dragHandle: ReactElement<React.HTMLAttributes<HTMLDivElement>> | undefined;
   onRowChange: (newRow: TRow) => void;
+  onMouseEnter: () => void;
 }
 
 export interface RowRendererProps<TRow, TSummaryRow = unknown>
   extends Omit<React.HTMLAttributes<HTMLDivElement>, 'style' | 'children'> {
   viewportColumns: readonly CalculatedColumn<TRow, TSummaryRow>[];
   row: TRow;
+  getDraggedOverCellIdx: (currentRowIdx: number, currentColIdx: number) => boolean;
   rowIdx: number;
   selectedCellIdx: number[] | undefined;
-  copiedCellIdx: number | undefined;
-  draggedOverCellIdx: number | undefined;
+  copiedCellIdx: number[] | undefined;
   lastFrozenColumnIndex: number;
   isRowSelected: boolean;
   top: number;
@@ -142,11 +143,11 @@ export interface RowRendererProps<TRow, TSummaryRow = unknown>
   onRowClick: Maybe<(row: TRow, column: CalculatedColumn<TRow, TSummaryRow>) => void>;
   onRowDoubleClick: Maybe<(row: TRow, column: CalculatedColumn<TRow, TSummaryRow>) => void>;
   rowClass: Maybe<(row: TRow) => Maybe<string>>;
-  setDraggedOverRowIdx: ((overRowIdx: number) => void) | undefined;
+  setDraggedOver?: (draggedOver?: { rowIdx: number; idx: number }) => void;
   selectCell: (
     row: TRow,
     column: CalculatedColumn<TRow, TSummaryRow>,
-    isShiftKey: boolean,
+    keyboard: { isShiftKey: boolean; isCommandKey: boolean },
     enableEditor?: Maybe<boolean>
   ) => void;
 }
@@ -163,7 +164,8 @@ export interface SelectRowEvent<TRow> {
 }
 
 export interface FillEvent<TRow> {
-  columnKey: string;
+  sourceColumnKey: string;
+  targetColumnKey: string;
   sourceRow: TRow;
   targetRow: TRow;
   targetRowIndex: number;

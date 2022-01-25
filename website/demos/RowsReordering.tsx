@@ -40,22 +40,28 @@ const columns: readonly Column<Row>[] = [
   {
     key: 'priority',
     name: 'Priority',
+    editor: TextEditor,
     width: 200
   },
   {
     key: 'issueType',
     name: 'Issue Type',
+    editor: TextEditor,
     width: 200
   },
   {
     key: 'complete',
     name: '% Complete',
+    editor: TextEditor,
     width: 200
   }
 ];
 
-const handleFill = ({ columnKey, sourceRow, targetRow, targetRowIndex }) => {
-  return { ...targetRow, [columnKey]: sourceRow[columnKey] };
+const handleFill = ({ sourceColumnKey, sourceRow, targetColumnKey, targetRow }) => {
+  return {
+    ...targetRow,
+    [targetColumnKey]: sourceRow[sourceColumnKey]
+  };
 };
 
 export default function RowsReordering() {

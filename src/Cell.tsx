@@ -33,6 +33,7 @@ function Cell<R, SR>({
   onRowDoubleClick,
   onRowChange,
   selectCell,
+  onMouseEnter,
   ...props
 }: CellRendererProps<R, SR>) {
   const { ref, tabIndex, onFocus } = useRovingCellRef(isCellSelected);
@@ -47,14 +48,24 @@ function Cell<R, SR>({
     typeof cellClass === 'function' ? cellClass(row) : cellClass
   );
 
-  function selectCellWrapper(config: { openEditor?: boolean | null; isShiftKey: boolean }) {
-    selectCell(row, column, config.isShiftKey, config.openEditor);
+  function selectCellWrapper(config: {
+    openEditor?: boolean | null;
+    isShiftKey: boolean;
+    isCommandKey: boolean;
+  }) {
+    selectCell(
+      row,
+      column,
+      { isShiftKey: config.isShiftKey, isCommandKey: config.isCommandKey },
+      config.openEditor
+    );
   }
 
   function handleClick(event: React.MouseEvent) {
     selectCellWrapper({
       openEditor: column.editorOptions?.editOnClick,
-      isShiftKey: event.shiftKey
+      isShiftKey: event.shiftKey,
+      isCommandKey: event.metaKey
     });
     onRowClick?.(row, column);
   }
@@ -62,14 +73,16 @@ function Cell<R, SR>({
   function handleContextMenu() {
     selectCellWrapper({
       isShiftKey: false,
-      openEditor: false
+      openEditor: false,
+      isCommandKey: false
     });
   }
 
   function handleDoubleClick() {
     selectCellWrapper({
       isShiftKey: false,
-      openEditor: true
+      openEditor: true,
+      isCommandKey: false
     });
     onRowDoubleClick?.(row, column);
   }
@@ -89,6 +102,7 @@ function Cell<R, SR>({
       onDoubleClick={handleDoubleClick}
       onContextMenu={handleContextMenu}
       onFocus={onFocus}
+      onMouseEnter={onMouseEnter}
       {...props}
     >
       {!column.rowGroup && (
