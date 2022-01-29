@@ -80,6 +80,11 @@ const initialPosition: SelectCellState = {
   mode: 'SELECT'
 };
 
+enum Direction {
+  LEFT = -1,
+  RIGHT = 1
+}
+
 export interface DataGridHandle {
   element: HTMLDivElement | null;
   scrollToColumn: (colIdx: number) => void;
@@ -848,6 +853,10 @@ function DataGrid<R, SR, K extends Key>(
     keyboard: { isShiftKey: boolean; isCommandKey: boolean },
     enableEditor?: Maybe<boolean>
   ): void {
+    if (position.idx === 0) {
+      return;
+    }
+
     if (!isCellWithinSelectionBounds(position)) return;
     commitEditorChanges();
 
@@ -918,6 +927,28 @@ function DataGrid<R, SR, K extends Key>(
     }
   }
 
+  function getNextIdxAndRow({
+    idx,
+    shiftKey,
+    rowIdx,
+    direction
+  }: {
+    idx: number;
+    rowIdx: number;
+    shiftKey: boolean;
+    direction: Direction;
+  }) {
+    const currentIdx = idx + (shiftKey ? -1 : direction);
+
+    if (currentIdx === columns.length) {
+      return { idx: 1, rowIdx: rowIdx + direction };
+    }
+    if (currentIdx === 0) {
+      return { idx: columns.length - 1, rowIdx: rowIdx + direction };
+    }
+    return { idx: currentIdx, rowIdx };
+  }
+
   function getNextPosition(key: string, ctrlKey: boolean, shiftKey: boolean): Position {
     const selectedPositionItem = selectedPosition[0]; // TODO change
     const { idx, rowIdx } = selectedPositionItem;
@@ -978,11 +1009,11 @@ function DataGrid<R, SR, K extends Key>(
         return { idx, rowIdx: nextRow };
       }
       case 'ArrowLeft':
-        return { idx: idx - 1, rowIdx };
+        return getNextIdxAndRow({ idx, rowIdx, shiftKey, direction: Direction.LEFT });
       case 'ArrowRight':
-        return { idx: idx + 1, rowIdx };
+        return getNextIdxAndRow({ idx, rowIdx, shiftKey, direction: Direction.RIGHT });
       case 'Tab':
-        return { idx: idx + (shiftKey ? -1 : 1), rowIdx };
+        return getNextIdxAndRow({ idx, rowIdx, shiftKey, direction: Direction.RIGHT });
       case 'Home':
         // If row is selected then move focus to the first row
         if (isRowSelected) return { idx, rowIdx: 0 };
