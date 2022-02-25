@@ -49,7 +49,7 @@ export default function DragHandle<R, SR>({
 }: Props<R, SR>) {
   const { popperRef, styles, attributes, isHide } = useDragHandlePopper({ dragOverflowHide });
 
-  function handleMouseDown(event: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+  function handleMouseDown(event: React.MouseEvent<HTMLDivElement>) {
     if (event.buttons !== 1) return;
     setDragging(true);
     window.addEventListener('mouseover', onMouseOver);
