@@ -32,7 +32,7 @@
     "build:types": "tsc && api-extractor run --local --verbose",
     "test": "jest",
     "test:watch": "jest --watch",
-    "eslint": "eslint --ext js,ts,tsx --max-warnings 0 -f codeframe --cache --color src test website",
+    "eslint": "eslint --ext js,ts,tsx --max-warnings 40 -f codeframe --cache --color src test website",
     "eslint:fix": "npm run eslint -- --fix",
     "prettier:check": "prettier --check .",
     "prettier:format": "prettier --write .",
