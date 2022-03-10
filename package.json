@@ -7,7 +7,6 @@
     "react",
     "data grid"
   ],
-  "repository": "github:20Scoops-CNX/react-data-grid",
   "bugs": "https://github.com/20Scoops-CNX/react-data-grid/issues",
   "type": "module",
   "exports": {
