@@ -9,7 +9,6 @@ import {
 } from 'react';
 import type { Key, RefAttributes, ReactNode, RefObject } from 'react';
 import clsx from 'clsx';
-import { fromEvent } from 'rxjs';
 import 'simplebar/dist/simplebar.min.css';
 
 import { rootClassname, viewportDraggingClassname, wrapperClassname } from './style';
@@ -257,7 +256,7 @@ function DataGrid<R, SR, K extends Key>(
   const summaryRowHeight = rawSummaryRowHeight ?? (typeof rowHeight === 'number' ? rowHeight : 35);
   const RowRenderer = rowRenderer ?? Row;
   const cellNavigationMode = rawCellNavigationMode ?? 'NONE';
-  enableVirtualization = hideRows.length <= 0 ? false : enableVirtualization ?? true;
+  enableVirtualization = hideRows.length <= 0;
 
   /**
    * states
@@ -644,22 +643,23 @@ function DataGrid<R, SR, K extends Key>(
       return 0;
     };
 
-    const subscription = fromEvent(element, 'wheel', { passive: true }).subscribe((e) => {
-      const wheelEvent = e as WheelEvent;
+    const onDirectionWheel = (event: WheelEvent) => {
+      const wheelEvent = event;
       const stringDeltaY = wheelEvent.deltaY.toString();
       const stringDeltaX = wheelEvent.deltaX.toString();
       const deltaY = Number(stringDeltaY);
       const deltaX = Number(stringDeltaX);
       scrollDirection = Math.abs(deltaX) > Math.abs(deltaY) ? 'horizontal' : 'vertical';
-    });
+    };
 
     element.addEventListener('wheel', onMouseWheel, { passive: false });
+    element.addEventListener('wheel', onDirectionWheel, { passive: false });
 
     return () => {
       element.removeEventListener('wheel', onMouseWheel);
-      subscription.unsubscribe();
+      element.removeEventListener('wheel', onDirectionWheel);
     };
-  }, [gridRef]);
+  }, [gridRef, totalRowHeight, clientHeight, gridHeight]);
 
   useEffect(() => {
     const element = (scrollRef as unknown as RefObject<HTMLDivElement>).current;
