@@ -1,6 +1,6 @@
 {
   "name": "react-data-grid-20scoops",
-  "version": "0.9.19",
+  "version": "0.9.20",
   "license": "MIT",
   "description": "Feature-rich and customizable data grid React component",
   "keywords": [
@@ -42,7 +42,6 @@
     "@popperjs/core": "^2.11.2",
     "clsx": "^1.1.1",
     "react-popper": "^2.2.5",
-    "rxjs": "^7.5.2",
     "simplebar-react": "^2.3.6"
   },
   "devDependencies": {

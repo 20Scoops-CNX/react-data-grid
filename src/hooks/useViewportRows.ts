@@ -184,7 +184,7 @@ export function useViewportRows<R>({
   let rowOverscanEndIdx = rows.length - 1;
 
   if (enableVirtualization) {
-    const overscanThreshold = 4;
+    const overscanThreshold = 5;
     const rowVisibleStartIdx = findRowIdx(scrollTop);
     const rowVisibleEndIdx = findRowIdx(scrollTop + clientHeight);
     rowOverscanStartIdx = max(0, rowVisibleStartIdx - overscanThreshold);
