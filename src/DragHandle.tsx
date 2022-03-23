@@ -138,6 +138,6 @@ export default function DragHandle<R, SR>({
       }}
       {...attributes.popper}
     />,
-    document.body
+    document.querySelector('.rdg') ?? document.body
   );
 }
