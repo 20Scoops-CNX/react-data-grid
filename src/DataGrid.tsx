@@ -9,7 +9,6 @@ import {
 } from 'react';
 import type { Key, RefAttributes, ReactNode, RefObject } from 'react';
 import clsx from 'clsx';
-import 'simplebar/dist/simplebar.min.css';
 
 import { rootClassname, viewportDraggingClassname, wrapperClassname } from './style';
 import {
