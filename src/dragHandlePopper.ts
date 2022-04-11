@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePopper } from 'react-popper';
 import type { DragOverflowHide } from './types';
 
@@ -9,21 +9,16 @@ export const useDragHandlePopper = ({
 }) => {
   const [referenceElement, setReferenceElement] = useState<HTMLDivElement | null>(null);
 
-  useLayoutEffect(() => {
-    setTimeout(() => {
-      const hooker = '[aria-selected=true]';
+  useEffect(() => {
+    const hooker = '[aria-selected=true]';
+    const cellElement = document.querySelector(hooker);
 
-      const cellElement = document.querySelector(hooker);
-
-      if (cellElement) {
-        setReferenceElement(cellElement as HTMLDivElement);
-      } else {
-        setReferenceElement(null);
-      }
-      window.dispatchEvent(new Event('resize'));
-    }, 0);
+    if (cellElement) {
+      setReferenceElement(cellElement as HTMLDivElement);
+    } else {
+      setReferenceElement(null);
+    }
   }, []);
-
   const popperRef = useRef<HTMLDivElement>(null);
 
   const { styles, attributes, state } = usePopper(referenceElement, popperRef.current, {
