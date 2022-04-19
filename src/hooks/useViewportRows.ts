@@ -133,7 +133,15 @@ export function useViewportRows<R>({
           return positionRowIdx * rowHeight;
         },
         getRowHeight: () => rowHeight,
-        findRowIdx: (offset: number) => floor(offset / rowHeight)
+        findRowIdx(offset: number) {
+          let result = floor(offset / rowHeight);
+          hideRows.forEach((hideRowIndex) => {
+            if (result >= hideRowIndex) {
+              result += 1;
+            }
+          });
+          return result;
+        }
       };
     }
 
@@ -186,6 +194,7 @@ export function useViewportRows<R>({
   if (enableVirtualization) {
     const overscanThreshold = 5;
     const rowVisibleStartIdx = findRowIdx(scrollTop);
+
     const rowVisibleEndIdx = findRowIdx(scrollTop + clientHeight);
     rowOverscanStartIdx = max(0, rowVisibleStartIdx - overscanThreshold);
     rowOverscanEndIdx = min(rows.length - 1, rowVisibleEndIdx + overscanThreshold);
