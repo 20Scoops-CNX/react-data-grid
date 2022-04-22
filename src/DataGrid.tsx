@@ -185,6 +185,7 @@ export interface DataGridProps<R, SR = unknown, K extends Key = Key> extends Sha
   noShowRowsFallback?: ReactNode;
   dragOverflowHide?: DragOverflowHide;
   onDragging?: (idDragging: boolean) => void;
+  onVisibleRow?: (startIndex: number, endIndex: number) => void;
 }
 
 /**
@@ -243,7 +244,8 @@ function DataGrid<R, SR, K extends Key>(
     noShowRowsFallback,
     hideRows = [],
     dragOverflowHide,
-    onDragging
+    onDragging,
+    onVisibleRow
   }: DataGridProps<R, SR, K>,
   ref: React.Ref<DataGridHandle>
 ) {
@@ -255,7 +257,7 @@ function DataGrid<R, SR, K extends Key>(
   const summaryRowHeight = rawSummaryRowHeight ?? (typeof rowHeight === 'number' ? rowHeight : 35);
   const RowRenderer = rowRenderer ?? Row;
   const cellNavigationMode = rawCellNavigationMode ?? 'NONE';
-  enableVirtualization = hideRows.length <= 0;
+  enableVirtualization = true;
 
   /**
    * states
@@ -366,6 +368,12 @@ function DataGrid<R, SR, K extends Key>(
     summaryRows,
     isGroupRow
   });
+
+  useEffect(() => {
+    if (onVisibleRow) {
+      onVisibleRow(rowOverscanStartIdx, rowOverscanEndIdx);
+    }
+  }, [rowOverscanStartIdx, rowOverscanEndIdx, onVisibleRow]);
 
   const hasGroups = groupBy.length > 0 && typeof rowGrouper === 'function';
   const minColIdx = hasGroups ? -1 : 0;
